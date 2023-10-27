@@ -6,6 +6,7 @@ from packaging.version import parse
 from scipy.signal import convolve
 from astropy.convolution import convolve_fft
 import cartopy.crs as ccrs
+import math
 
 
 def kernel(x):
@@ -27,7 +28,7 @@ def kernel(x):
     kernel = np.maximum(np.cos(x), 0)
     return kernel
 
-def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
+def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
     '''
     
     Generate full rotation phase curve from N longitudinal slices with brightness of J.
@@ -59,9 +60,13 @@ def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
 
     '''
 
-    data_points=points_per_slice*slice_num
-    map_data = np.zeros(data_points)
+    '''generate map and kernel'''
 
+    points_per_slice=math.ceil(points_per_slice) #round up if the number is not int
+    data_points=points_per_slice*slice_num #number of total datapoints for map and phase curve
+    map_data = np.zeros(data_points)#initialize longitudinal map
+
+    #fill in descreete values of J into longitudinal slices
     for i in range(slice_num):
         start_idx = i * points_per_slice
         end_idx = (i + 1) * points_per_slice   
@@ -69,14 +74,17 @@ def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
     
     # Triplicate the map
     triplicated_map = np.tile(map_data, 3)
-    x_triplicated = np.linspace(-3 * np.pi, 3 * np.pi, 3 * data_points)
+    x_triplicated = np.linspace(-3 * np.pi, 3 * np.pi, 3 * data_points) #triplicated longitudes 
     
+    #number of data points for kernel, which is half of total map points, because we observe half of the planet
+    kernel_size = int(data_points/2) 
     
-    kernel_size = int(data_points/2)
+    #generate x values for the cosine kernel
     x_kernel = np.linspace(-np.pi/2, np.pi/2, kernel_size)
     
-    kernel_data=kernel(x_kernel)
+    kernel_data=kernel(x_kernel) #kernel y data
     
+    #plot triplicated map and the kernel
     if plot==True:
     
         plt.figure(figsize=(12, 6))
@@ -98,19 +106,32 @@ def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
         plt.show()
 
     
-    convolution_result = np.zeros(data_points)
+    convolution_result = np.zeros(data_points) #initialize phase curve 
     
-    # Perform convolution
+    '''perform convolution'''
     
-    start_idx = int(data_points-data_points/4)
+    #initial indexing for map data that is convolved at the beginning
+    start_idx = int(data_points-data_points/4) 
     end_idx = int(data_points+data_points/4)
     
+    #slide convolution window over whole longitudinal map 
     for i in range(data_points):
     
-        # Get the slice of the map data within the window
-        window_slice = triplicated_map[start_idx+i:end_idx+i]
+        window_slice = triplicated_map[start_idx+i:end_idx+i] #map data slice currently observed
+        
+        #check if window and kernel are the same size, this is needed when data is not divisible by slice_num etc
+        if len(window_slice) < kernel_size:
+            window_slice = np.pad(window_slice, (kernel_size - len(window_slice), 0))
+        elif len(window_slice) > kernel_size:
+            window_slice = window_slice[:kernel_size]
+        
+        #weighted sum of kernel and current part of the map 
         convolution_result[i] = np.sum(window_slice * kernel_data)
+        
+        #uncomment code below to see the progress ploted 
     
+        # plt.figure(figsize=(12, 6))
+        # plt.subplot(1, 2, 1)
         # plt.xlim(-3*np.pi, 3*np.pi)
         # x_ticks = [-3*np.pi, -2*np.pi, -np.pi, 0, np.pi, 2 * np.pi, 3 * np.pi]
         # x_tick_labels = ['-3π', '-2π', '-π','0', 'π', '2π', '3π']
@@ -119,11 +140,23 @@ def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
         # plt.axvline(x_triplicated[end_idx+i], color='r', linestyle='--')
         # plt.plot(x_triplicated, triplicated_map, label="Map")
         # plt.title("Map")
+        
+        
+        # plt.subplot(1, 2, 2)
+        # plt.plot(np.linspace(-np.pi, np.pi, data_points), convolution_result, label="Convolution")
+        # plt.title("Convolution Result")
+        # x_ticks = [ -np.pi, -np.pi/2, 0, np.pi/2, np.pi]
+        # x_tick_labels = [ '-π','-π/2','0', 'π/2', 'π']
+        # plt.ylim(0,20)
+        # plt.xlabel('phase')
+        # plt.xticks(x_ticks, x_tick_labels)
+        # plt.ylabel('flux / mean flux')
         # plt.show()
     
-        
+    #normalize the result 
     convolution_result=convolution_result/np.mean(convolution_result)
     
+    #plot convolved phase curve
     if plot==True:
         plt.plot(np.linspace(-np.pi, np.pi, data_points), convolution_result, label="Convolution")
         plt.title("Convolution Result")
@@ -134,6 +167,7 @@ def map2curve(slice_num, J, points_per_slice=100, kernel=kernel, plot=False):
         plt.ylabel('flux / mean flux')
         plt.show()
     
+    #plot planet with slices and the phase curve
     if plot==True:
         lon = np.linspace(-180, 180, 360)
         lat = np.linspace(-90, 90, 180)
