@@ -28,7 +28,7 @@ def kernel(x):
     kernel = np.maximum(np.cos(x), 0)
     return kernel
 
-def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
+def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, true_len=None, plot=False):
     '''
     
     Generate full rotation phase curve from N longitudinal slices with brightness of J.
@@ -63,7 +63,11 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
     '''generate map and kernel'''
 
     points_per_slice=math.ceil(points_per_slice) #round up if the number is not int
-    data_points=points_per_slice*slice_num #number of total datapoints for map and phase curve
+    if true_len != None:
+        data_points = true_len
+    else:
+        data_points=points_per_slice*slice_num #number of total datapoints for map and phase curve
+    
     map_data = np.zeros(data_points)#initialize longitudinal map
 
     #fill in descreete values of J into longitudinal slices
@@ -154,7 +158,7 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
         # plt.show()
     
     #normalize the result 
-    convolution_result=convolution_result/np.mean(convolution_result)
+    convolution_result=convolution_result
     
     #plot convolved phase curve
     if plot==True:
@@ -191,7 +195,7 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
         ax0.set_global()
         ax0.gridlines()
         
-        cbar_ticks=np.linspace(0,1.0, 10)
+        cbar_ticks=np.linspace(0,0.1, 10)
         contour = ax0.contourf(lon, lat, data, transform=data_crs, cmap='gray', 
                                vmin=np.mean(cbar_ticks[:2]), 
                                vmax=np.mean(cbar_ticks[-2:]),
@@ -216,10 +220,13 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, plot=False):
         
         plt.show()
         
-    return convolution_result
+    if true_len!=None:
+        return convolution_result[:true_len]
+    else:
+        return convolution_result
 
 if __name__ == "__main__":
     
-    N=6
-    J=np.random.uniform(0.0, 1.0, 6)
-    phase_curve=map2curve(N, J, plot=True)
+    N=5
+    J=np.random.uniform(0.0, 0.1, N)
+    phase_curve=map2curve(N, J, plot=False)
