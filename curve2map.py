@@ -22,7 +22,7 @@ def function(ksi, *args):
     curve = map2curve(slice_num, J, points_per_slice=pps, true_len=len(ksi), plot=False)
     return curve
 
-def curve2map(phase_curves, full_phase, slice_num, plot=False, save=False):
+def curve2map(phase_curves, full_phase, slice_num, plot=False, save=False, best_fit=False):
     """
     Convert phase curves to N-slice maps.
 
@@ -43,6 +43,8 @@ def curve2map(phase_curves, full_phase, slice_num, plot=False, save=False):
     # Initialize arrays to store the maps and their errors
     maps = np.empty((0, slice_num))
     maps_err = np.empty((0, slice_num))
+    
+    fits = []
 
     # Initial parameters for the curve fitting
     init = [0.1] * slice_num
@@ -63,6 +65,10 @@ def curve2map(phase_curves, full_phase, slice_num, plot=False, save=False):
         Js = popt
         Jerr = np.sqrt(np.diag(pcov))
 
+        if best_fit:
+            fit = function(ksi, *Js)
+            fits.append(fit)
+
         # Plot the fit results if requested
         if plot:
             fit = function(ksi, *Js)
@@ -80,7 +86,12 @@ def curve2map(phase_curves, full_phase, slice_num, plot=False, save=False):
         np.savetxt('Nslice_maps.txt', maps, fmt='%f', delimiter='\t')
         np.savetxt('Nslice_maps_err.txt', maps_err, fmt='%f', delimiter='\t')
 
-    return maps, maps_err
+
+    if best_fit:
+        return maps, maps_err, fits
+    
+    else:
+        return maps, maps_err
 
 # Example usage
 if __name__ == "__main__":

@@ -151,7 +151,7 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, true_len=None, p
         # plt.title("Convolution Result")
         # x_ticks = [ -np.pi, -np.pi/2, 0, np.pi/2, np.pi]
         # x_tick_labels = [ '-π','-π/2','0', 'π/2', 'π']
-        # plt.ylim(0,20)
+        # plt.ylim(0,1.5)
         # plt.xlabel('phase')
         # plt.xticks(x_ticks, x_tick_labels)
         # plt.ylabel('flux / mean flux')
@@ -227,6 +227,6 @@ def map2curve(slice_num, J, points_per_slice=10, kernel=kernel, true_len=None, p
 
 if __name__ == "__main__":
     
-    N=5
+    N=6
     J=np.random.uniform(0.0, 0.1, N)
-    phase_curve=map2curve(N, J, plot=False)
+    phase_curve=map2curve(N, J, plot=True)
