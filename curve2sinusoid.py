@@ -75,12 +75,18 @@ def Fourier(ksi, modes, include_odd_modes=False):
     
     return sequence
 
-def curve2sinusoid(phase_curves, full_phase, longitude_slices, max_mode, include_odd_modes=False, plot=False, best_fit=False):
+def curve2sinusoid(phase_curves, full_phase, longitude_slices, max_mode, 
+                   include_odd_modes=False, 
+                   plot=False, 
+                   best_fit=False,
+                   curve_err=None):
     phi = np.linspace(-np.pi, np.pi, longitude_slices) #longitude
     ksi = np.linspace(0, 2*np.pi, len(full_phase)) #phase
     maps = np.empty((0, len(phi)))
     
     fits = []
+    coef_table = []
+    coef_errors = []
     
     Fur_function = Fourier(ksi, max_mode, include_odd_modes)
     Map_function = sinusoid_map(phi, max_mode, include_odd_modes)
@@ -96,14 +102,21 @@ def curve2sinusoid(phase_curves, full_phase, longitude_slices, max_mode, include
     for col_idx in range(phase_curves.shape[1]):
         phase_curve = phase_curves[:, col_idx]
         
-        popt, pcov = curve_fit(Fur_function, ksi, phase_curve, p0=init)
+        
+        if curve_err is not None:
+            popt, pcov = curve_fit(Fur_function, ksi, phase_curve, p0=init,
+                                   sigma=curve_err, absolute_sigma = True)
+        else:
+            popt, pcov = curve_fit(Fur_function, ksi, phase_curve, p0=init)
         
         coefs = popt
+        
+        coef_table.append(coefs)
         
         # coefs = np.vstack((coefs, np.reshape(popt, (1, len(popt)))))
         
         coef_err = np.sqrt(np.diag(pcov))
-    
+        coef_errors.append(coef_err)
 
         if best_fit:
             fit = Fur_function(ksi, *coefs)
@@ -123,7 +136,7 @@ def curve2sinusoid(phase_curves, full_phase, longitude_slices, max_mode, include
         maps = np.vstack((maps, np.reshape(J, (1, len(J)))))
         
     if best_fit:
-        return maps, fits
+        return maps, fits, coef_table, coef_errors
     else:
         return maps
             
